@@ -26,10 +26,8 @@ from mutmut import (
     guess_paths_to_mutate,
     Config,
     Progress,
-    check_coverage_data_filepaths,
     popen_streaming_output,
     run_mutation_tests,
-    read_coverage_data,
     read_patch_data,
     add_mutations_by_file,
     python_source_files,
@@ -45,6 +43,8 @@ from mutmut.cache import print_result_cache, print_result_ids_cache, \
     hash_of_tests, \
     filename_and_mutation_id_from_pk, cached_test_time, set_cached_test_time, \
     update_line_numbers, print_result_cache_junitxml, get_unified_diff
+
+from mutmut.mutmut_coverage import form_coverage
 
 
 def do_apply(mutation_pk, dict_synonyms, backup):
@@ -97,6 +97,7 @@ def version():
 
 @climain.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.argument('argument', nargs=1, required=False)
+@click.option('-n', '--number-mutants', default=-1, type=click.INT)
 @click.option('--paths-to-mutate', type=click.STRING)
 @click.option('--disable-mutation-types', type=click.STRING, help='Skip the given types of mutations.')
 @click.option('--enable-mutation-types', type=click.STRING, help='Only perform given types of mutations.')
@@ -126,7 +127,7 @@ def version():
     post_mutation=None,
     use_patch_file=None,
 )
-def run(argument, paths_to_mutate, disable_mutation_types, enable_mutation_types, runner,
+def run(argument, number_mutants, paths_to_mutate, disable_mutation_types, enable_mutation_types, runner,
         tests_dir, test_time_multiplier, test_time_base, swallow_output, use_coverage,
         dict_synonyms, pre_mutation, post_mutation, use_patch_file, paths_to_exclude,
         simple_output, no_progress, ci, rerun_all):
@@ -138,7 +139,7 @@ def run(argument, paths_to_mutate, disable_mutation_types, enable_mutation_types
     if test_time_multiplier is None:  # click sets the default=0.0 to None
         test_time_multiplier = 0.0
 
-    sys.exit(do_run(argument, paths_to_mutate, disable_mutation_types, enable_mutation_types, runner,
+    sys.exit(do_run(argument, number_mutants, paths_to_mutate, disable_mutation_types, enable_mutation_types, runner,
                     tests_dir, test_time_multiplier, test_time_base, swallow_output, use_coverage,
                     dict_synonyms, pre_mutation, post_mutation, use_patch_file, paths_to_exclude,
                     simple_output, no_progress, ci, rerun_all))
@@ -236,7 +237,7 @@ def html(dict_synonyms):
     sys.exit(0)
 
 
-def do_run(argument, paths_to_mutate, disable_mutation_types,
+def do_run(argument, number_mutants, paths_to_mutate, disable_mutation_types,
            enable_mutation_types, runner, tests_dir, test_time_multiplier, test_time_base,
            swallow_output, use_coverage, dict_synonyms, pre_mutation, post_mutation,
            use_patch_file, paths_to_exclude, simple_output, no_progress, ci, rerun_all):
@@ -263,9 +264,6 @@ def do_run(argument, paths_to_mutate, disable_mutation_types,
         raise click.BadArgumentUsage(f"The following are not valid mutation types: {', '.join(sorted(invalid_types))}. Valid mutation types are: {', '.join(mutations_by_type.keys())}")
 
     dict_synonyms = [x.strip() for x in dict_synonyms.split(',')]
-
-    if use_coverage and not exists('.coverage'):
-        raise FileNotFoundError('No .coverage file found. You must generate a coverage file to use this feature.')
 
     if paths_to_mutate is None:
         paths_to_mutate = guess_paths_to_mutate()
@@ -358,8 +356,7 @@ Legend for output:
     if use_coverage or use_patch_file:
         covered_lines_by_filename = {}
         if use_coverage:
-            coverage_data = read_coverage_data()
-            check_coverage_data_filepaths(coverage_data)
+            coverage_data = form_coverage(argument, paths_to_mutate, tests_dirs, paths_to_exclude)
         else:
             assert use_patch_file
             covered_lines_by_filename = read_patch_data(use_patch_file)
@@ -373,6 +370,7 @@ Legend for output:
 
     config = Config(
         total=0,  # we'll fill this in later!
+        number_mutants=number_mutants,
         swallow_output=not swallow_output,
         test_command=runner,
         covered_lines_by_filename=covered_lines_by_filename,
@@ -399,7 +397,8 @@ Legend for output:
 
     print()
     print('2. Checking mutants')
-    progress = Progress(total=config.total, output_legend=output_legend, no_progress=no_progress)
+    progress_total = config.total if number_mutants < 0 else number_mutants
+    progress = Progress(total=progress_total, output_legend=output_legend, no_progress=no_progress)
 
     try:
         run_mutation_tests(config=config, progress=progress, mutations_by_file=mutations_by_file)

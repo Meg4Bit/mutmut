@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import sys
 import toml
+import random
 from configparser import ConfigParser
 from copy import copy as copy_obj
 from functools import wraps
@@ -35,7 +36,10 @@ __version__ = '2.4.3'
 if os.getcwd() not in sys.path:
     sys.path.insert(0, os.getcwd())
 try:
-    import mutmut_config
+    if os.path.exists('mutmut_config.py'):
+        import mutmut_config
+    else:
+        import mutmut.mutmut_config
 except ImportError:
     mutmut_config = None
 
@@ -720,24 +724,28 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
 
     try:
         index = 0
+        if config.number_mutants >= 0:
+            random_mutants = random.sample(range(config.total), config.number_mutants)
         for filename, mutations in mutations_by_file.items():
             cached_mutation_statuses = get_cached_mutation_statuses(filename, mutations, config.hash_of_tests)
             with open(filename) as f:
                 source = f.read()
             for mutation_id in mutations:
-                cached_status = cached_mutation_statuses.get(mutation_id)
-                if cached_status != UNTESTED:
-                    progress.register(cached_status)
-                    continue
-                context = Context(
-                    mutation_id=mutation_id,
-                    filename=filename,
-                    dict_synonyms=config.dict_synonyms,
-                    config=copy_obj(config),
-                    source=source,
-                    index=index,
-                )
-                mutants_queue.put(('mutant', context))
+                if config.number_mutants < 0:
+                    cached_status = cached_mutation_statuses.get(mutation_id)
+                    if cached_status != UNTESTED:
+                        progress.register(cached_status)
+                        continue
+                if config.number_mutants < 0 or index in random_mutants:
+                    context = Context(
+                        mutation_id=mutation_id,
+                        filename=filename,
+                        dict_synonyms=config.dict_synonyms,
+                        config=copy_obj(config),
+                        source=source,
+                        index=index,
+                    )
+                    mutants_queue.put(('mutant', context))
                 index += 1
     finally:
         mutants_queue.put(('end', None))
@@ -831,11 +839,12 @@ def run_mutation(context: Context, callback) -> str:
 
 
 class Config(object):
-    def __init__(self, swallow_output, test_command, covered_lines_by_filename,
+    def __init__(self, number_mutants, swallow_output, test_command, covered_lines_by_filename,
                  baseline_time_elapsed, test_time_multiplier, test_time_base,
                  dict_synonyms, total, using_testmon,
                  tests_dirs, hash_of_tests, pre_mutation, post_mutation,
                  coverage_data, paths_to_mutate, mutation_types_to_apply, no_progress, ci, rerun_all):
+        self.number_mutants = number_mutants
         self.swallow_output = swallow_output
         self.test_command = self._default_test_command = test_command
         self.covered_lines_by_filename = covered_lines_by_filename
@@ -995,12 +1004,6 @@ class Progress(object):
             raise ValueError('Unknown status returned from run_mutation: {}'.format(status))
         self.progress += 1
         self.print()
-
-
-def check_coverage_data_filepaths(coverage_data):
-    for filepath in coverage_data:
-        if not os.path.exists(filepath):
-            raise ValueError('Filepaths in .coverage not recognized, try recreating the .coverage file manually.')
 
 
 def get_mutations_by_file_from_cache(mutation_pk):
