@@ -46,16 +46,6 @@ def find_difference(changes_dict):
                     changes_dict[path]['+'].append(b_line)
                     b_line += 1
 
-def find_changed_tests_copy(covered_files, changes_dict, sign):
-    changed_tests = []
-    for covered_file in covered_files.keys():
-        if covered_file in changes_dict.keys():    # Tests which coverage affected by changes
-            changed_lines = changes_dict[covered_file][sign]
-            for line in changed_lines:
-                if line in covered_files[covered_file].keys():
-                    changed_tests += [test for test in covered_files[covered_file][line] if test not in changed_tests]
-    return changed_tests
-
 def covered_files_lists(prev_covered_files, new_covered_files):
     list_prev_covered_files = prev_covered_files.keys()
     list_new_covered_files = new_covered_files.keys()
@@ -71,7 +61,7 @@ def covered_files_lists(prev_covered_files, new_covered_files):
 
 def tests_with_changes(changed_lines, covered_file, changed_tests):
     for line in changed_lines:
-        if line in covered_file.keys():
+        if line in covered_file:
             changed_tests += [test for test in covered_file[line] if test not in changed_tests]
 
 def find_changed_tests(dict_prev_covered_files, dict_new_covered_files, changes_dict):
@@ -93,28 +83,29 @@ def find_changed_tests(dict_prev_covered_files, dict_new_covered_files, changes_
     return [item for item in changed_tests if item != '']
 
 
-def form_coverage(argument, paths_to_mutate, tests_dirs, paths_to_exclude):
-    """Find all test files located under the 'tests' directory and calculate coverage"""
-    # files = program_files(paths_to_mutate, paths_to_exclude)
-    cov_data = CoverageData()
-    pytest.main(args=tests_dirs + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header'])
+def modified_coverage(new_covered_files):
+    changes_dict = {}
+    modified_coverage = {}
+    cov_data = CoverageData(".coverage_old")
     cov_data.read()
-    new_covered_files = {filepath: cov_data.contexts_by_lineno(filepath) for filepath in cov_data.measured_files()}
-    if os.path.exists(".git"):
-        changes_dict = {}
-        cov_data = CoverageData(".coverage_old")
-        cov_data.read()
-        prev_covered_files = {filepath: cov_data.contexts_by_lineno(filepath) for filepath in cov_data.measured_files()}
-        find_difference(changes_dict)
-        tests_list = find_changed_tests(prev_covered_files, new_covered_files, changes_dict)
-        for file in new_covered_files.keys():
-            new_covered_files[file] = {line: new_covered_files[file][line] \
-                                        for line in new_covered_files[file].keys() \
-                                        if any(test in new_covered_files[file][line] for test in tests_list)}
-    return new_covered_files
+    prev_covered_files = {filepath: cov_data.contexts_by_lineno(filepath) for filepath in cov_data.measured_files()}
+    find_difference(changes_dict)
+    tests_list = find_changed_tests(prev_covered_files, new_covered_files, changes_dict)
+    for file in new_covered_files:
+        modified_coverage[file] = {line: new_covered_files[file][line] \
+                                    for line in new_covered_files[file] \
+                                    if any(test in new_covered_files[file][line] for test in tests_list)}
+    return modified_coverage, []
 
     
-
+def measure_coverage(argument, paths_to_mutate, tests_dirs):
+    """Find all test files located under the 'tests' directory and calculate coverage"""
+    # files = program_files(paths_to_mutate, paths_to_exclude)
+    # pytest.main(args=tests_dirs + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header'])
+    cov_data = CoverageData()
+    cov_data.read()
+    new_covered_files = {filepath: cov_data.contexts_by_lineno(filepath) for filepath in cov_data.measured_files()}
+    return new_covered_files
 
 
     # if argument and os.path.exists(argument):

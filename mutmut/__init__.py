@@ -725,17 +725,22 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
     try:
         index = 0
         if config.number_mutants >= 0:
-            random_mutants = random.sample(range(config.total), config.number_mutants)
+            if config.changed_mutants is None:
+                sample_elements = range(config.total)
+                number_mutants = config.number_mutants if config.number_mutants < config.total else config.total
+            else:
+                sample_elements = range(config.total)
+                number_mutants = len(config.changed_mutants)
+            random_mutants = random.sample(sample_elements, number_mutants)
         for filename, mutations in mutations_by_file.items():
             cached_mutation_statuses = get_cached_mutation_statuses(filename, mutations, config.hash_of_tests)
             with open(filename) as f:
                 source = f.read()
             for mutation_id in mutations:
-                if config.number_mutants < 0:
-                    cached_status = cached_mutation_statuses.get(mutation_id)
-                    if cached_status != UNTESTED:
-                        progress.register(cached_status)
-                        continue
+                cached_status = cached_mutation_statuses.get(mutation_id)
+                if cached_status != UNTESTED:
+                    progress.register(cached_status)
+                    continue
                 if config.number_mutants < 0 or index in random_mutants:
                     context = Context(
                         mutation_id=mutation_id,
@@ -839,12 +844,15 @@ def run_mutation(context: Context, callback) -> str:
 
 
 class Config(object):
-    def __init__(self, number_mutants, swallow_output, test_command, covered_lines_by_filename,
+    def __init__(self, number_mutants, coverage_to_mutate, changed_mutants, 
+                 swallow_output, test_command, covered_lines_by_filename,
                  baseline_time_elapsed, test_time_multiplier, test_time_base,
                  dict_synonyms, total, using_testmon,
                  tests_dirs, hash_of_tests, pre_mutation, post_mutation,
                  coverage_data, paths_to_mutate, mutation_types_to_apply, no_progress, ci, rerun_all):
         self.number_mutants = number_mutants
+        self.coverage_to_mutate = coverage_to_mutate
+        self.changed_mutants = changed_mutants
         self.swallow_output = swallow_output
         self.test_command = self._default_test_command = test_command
         self.covered_lines_by_filename = covered_lines_by_filename
@@ -1262,8 +1270,9 @@ def add_mutations_by_file(mutations_by_file, filename, dict_synonyms, config):
 
     try:
         mutations_by_file[filename] = list_mutations(context)
-        from mutmut.cache import register_mutants
-        register_mutants(mutations_by_file)
+        if config.number_mutants < 0:
+            from mutmut.cache import register_mutants
+            register_mutants(mutations_by_file)
     except Exception as e:
         raise RuntimeError('Failed while creating mutations for {}, for line "{}"'.format(context.filename, context.current_source_line)) from e
 

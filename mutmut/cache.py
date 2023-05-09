@@ -437,9 +437,9 @@ def get_cached_mutation_statuses(filename, mutations, hash_of_tests):
     result = {}
 
     for mutation_id in mutations:
-        if mutation_id.line not in line_obj_by_line:
-            line_obj_by_line[mutation_id.line] = Line.get(sourcefile=sourcefile, line=mutation_id.line, line_number=mutation_id.line_number)
-        line = line_obj_by_line[mutation_id.line]
+        if mutation_id.line_number not in line_obj_by_line:
+            line_obj_by_line[mutation_id.line_number] = Line.get(sourcefile=sourcefile, line=mutation_id.line, line_number=mutation_id.line_number)
+        line = line_obj_by_line[mutation_id.line_number]
         assert line
         mutant = Mutant.get(line=line, index=mutation_id.index)
         if mutant is None:

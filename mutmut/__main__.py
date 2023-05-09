@@ -44,7 +44,7 @@ from mutmut.cache import print_result_cache, print_result_ids_cache, \
     filename_and_mutation_id_from_pk, cached_test_time, set_cached_test_time, \
     update_line_numbers, print_result_cache_junitxml, get_unified_diff
 
-from mutmut.mutmut_coverage import form_coverage
+from mutmut.mutmut_coverage import modified_coverage, measure_coverage
 
 
 def do_apply(mutation_pk, dict_synonyms, backup):
@@ -353,10 +353,14 @@ Legend for output:
     # if we're running in a mode with externally whitelisted lines
     covered_lines_by_filename = None
     coverage_data = None
+    coverage_to_mutate = None
+    changed_mutants = None
     if use_coverage or use_patch_file:
         covered_lines_by_filename = {}
         if use_coverage:
-            coverage_data = form_coverage(argument, paths_to_mutate, tests_dirs, paths_to_exclude)
+            coverage_data = measure_coverage(argument, paths_to_mutate, tests_dirs)
+            if os.path.exists(".git") and os.path.exists(".mutmut-cache"):
+                coverage_to_mutate, changed_mutants = modified_coverage(coverage_data)
         else:
             assert use_patch_file
             covered_lines_by_filename = read_patch_data(use_patch_file)
@@ -371,6 +375,8 @@ Legend for output:
     config = Config(
         total=0,  # we'll fill this in later!
         number_mutants=number_mutants,
+        coverage_to_mutate=coverage_to_mutate,
+        changed_mutants=changed_mutants,
         swallow_output=not swallow_output,
         test_command=runner,
         covered_lines_by_filename=covered_lines_by_filename,
