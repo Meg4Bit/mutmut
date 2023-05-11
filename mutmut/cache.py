@@ -520,3 +520,43 @@ def set_cached_test_time(baseline_time_elapsed, current_hash_of_tests):
 def cached_hash_of_tests():
     d = MiscData.get(key='hash_of_tests')
     return d.value if d else None
+
+
+@init_db
+@db_session
+def tested_mutants():
+    mutants = select(x for x in Mutant if x.status != UNTESTED)[:]
+    return [RelativeMutationID(line=mutant.line.line, index=mutant.index, line_number=mutant.line.line_number,\
+                               filename=mutant.line.sourcefile.filename) for mutant in mutants]
+
+
+def delete_mutants(mutants):
+    for mutant in mutants:
+        update_mutant_status(mutant.filename, mutant, UNTESTED, '')
+
+
+@init_db
+@db_session
+def set_commit_hash(commit_hash):
+    get_or_create(MiscData, key='commit_hash').value = commit_hash
+
+
+@init_db
+@db_session
+def commit_hash():
+    d = MiscData.get(key='commit_hash')
+    return d.value if d else None
+
+
+@init_db
+@db_session
+def update_mutants_test_hash(mutants, test_hash):
+    for mutant in mutants:
+        sourcefile = SourceFile.get(filename=mutant.filename)
+        assert sourcefile
+        line = Line.get(sourcefile=sourcefile, line=mutant.line, line_number=mutant.line_number)
+        assert line
+        mutant = Mutant.get(line=line, index=mutant.index)
+        if mutant is None:
+            mutant = get_or_create(Mutant, line=line, index=mutant.index, defaults=dict(status=UNTESTED))
+        mutant.tested_against_hash = test_hash

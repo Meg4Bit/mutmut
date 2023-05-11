@@ -29,6 +29,7 @@ from time import time
 
 from parso import parse
 from parso.python.tree import Name, Number, Keyword, FStringStart, FStringEnd
+from mutmut.mutmut_coverage import changed_sample
 
 __version__ = '2.4.3'
 
@@ -622,7 +623,7 @@ def mutate_node(node, context):
         if hasattr(node, 'children'):
             mutate_list_of_nodes(node, context=context)
 
-            # this is just an optimization to stop early
+            # this is just an optimization to stop earlyexclude_line
             if context.performed_mutation_ids and context.mutation_id != ALL:
                 return
 
@@ -726,11 +727,20 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
         index = 0
         if config.number_mutants >= 0:
             if config.changed_mutants is None:
-                sample_elements = range(config.total)
+                from mutmut.cache import tested_mutants, delete_mutants
+                t_mutants = tested_mutants()
                 number_mutants = config.number_mutants if config.number_mutants < config.total else config.total
+                if number_mutants - len(tested_mutants()) < 0:
+                    delete_mutants(t_mutants)
+                    t_mutants = []
+                else:
+                    number_mutants -= len(tested_mutants())
+                sample_elements = [mutant for file in mutations_by_file \
+                                   for mutant in mutations_by_file[file] if mutant not in t_mutants]
             else:
-                sample_elements = range(config.total)
+                sample_elements = changed_sample(config.coverage_to_mutate, mutations_by_file)
                 number_mutants = len(config.changed_mutants)
+                number_mutants = number_mutants if number_mutants < len(sample_elements) else len(sample_elements)
             random_mutants = random.sample(sample_elements, number_mutants)
         for filename, mutations in mutations_by_file.items():
             cached_mutation_statuses = get_cached_mutation_statuses(filename, mutations, config.hash_of_tests)
@@ -741,7 +751,7 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
                 if cached_status != UNTESTED:
                     progress.register(cached_status)
                     continue
-                if config.number_mutants < 0 or index in random_mutants:
+                if config.number_mutants < 0 or mutation_id in random_mutants:
                     context = Context(
                         mutation_id=mutation_id,
                         filename=filename,

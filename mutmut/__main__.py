@@ -42,9 +42,10 @@ from mutmut.cache import (
 from mutmut.cache import print_result_cache, print_result_ids_cache, \
     hash_of_tests, \
     filename_and_mutation_id_from_pk, cached_test_time, set_cached_test_time, \
-    update_line_numbers, print_result_cache_junitxml, get_unified_diff
+    update_line_numbers, print_result_cache_junitxml, get_unified_diff, delete_mutants, \
+    set_commit_hash, commit_hash, tested_mutants, update_mutants_test_hash
 
-from mutmut.mutmut_coverage import modified_coverage, measure_coverage
+from mutmut.mutmut_coverage import modified_coverage, measure_coverage, current_commit
 
 
 def do_apply(mutation_pk, dict_synonyms, backup):
@@ -359,12 +360,15 @@ Legend for output:
         covered_lines_by_filename = {}
         if use_coverage:
             coverage_data = measure_coverage(argument, paths_to_mutate, tests_dirs)
-            if os.path.exists(".git") and os.path.exists(".mutmut-cache"):
+            commit = commit_hash()
+            if os.path.exists(".git") and commit and commit != current_commit():
                 coverage_to_mutate, changed_mutants = modified_coverage(coverage_data)
+                delete_mutants(changed_mutants)
+                update_mutants_test_hash(tested_mutants(), current_hash_of_tests)
         else:
             assert use_patch_file
             covered_lines_by_filename = read_patch_data(use_patch_file)
-
+    
     mutations_by_file = {}
 
     paths_to_exclude = paths_to_exclude or ''
@@ -408,6 +412,7 @@ Legend for output:
 
     try:
         run_mutation_tests(config=config, progress=progress, mutations_by_file=mutations_by_file)
+        set_commit_hash(current_commit())
     except Exception as e:
         traceback.print_exc()
         return compute_exit_code(progress, e)
