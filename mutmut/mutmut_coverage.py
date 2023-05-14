@@ -1,5 +1,3 @@
-import io
-import pytest
 import git
 import difflib
 import subprocess
@@ -121,31 +119,16 @@ def modified_coverage(new_covered_files):
     return modified_coverage, changed_mutants
 
     
-def measure_coverage(argument, paths_to_mutate, tests_dirs):
+def measure_coverage(argument, paths_to_mutate, tests_dirs, test_command):
     """Find all test files located under the 'tests' directory and calculate coverage"""
     # files = program_files(paths_to_mutate, paths_to_exclude)
-    command = ["pytest"] + tests_dirs + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header']
-    result = subprocess.check_output(command)
-    # with io.StringIO() as buf, redirect_stdout(buf):
-    #     pytest.main(args=tests_dirs + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header'])
+    command = test_command.split(' ') + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header']
+    result = subprocess.check_output(command)  #TODO add paths to coverage
     cov_data = CoverageData()
     cov_data.read()
     new_covered_files = {filepath: cov_data.contexts_by_lineno(filepath) for filepath in cov_data.measured_files()}
     return new_covered_files
 
-
-    # if argument and os.path.exists(argument):
-    #     cov_path = argument
-    # else:
-    #     cov_path = []
-    #     for path in paths_to_mutate:
-    #         for filename in python_source_files(path, tests_dirs, paths_to_exclude):
-    #             if not (os.path.basename(filename).startswith('test_') or filename.endswith('__tests.py')):
-    #                 cov_path.append(filename)
-    # pytest.main(args=tests_dirs + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header'])
-    # cov_data = CoverageData()
-    # cov_data.read()
-    # print(cov_data.measured_files())
 
 def changed_sample(coverage_to_mutate, mutations_by_file):
     changed_coverage_mutants = []

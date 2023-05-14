@@ -359,7 +359,7 @@ Legend for output:
     if use_coverage or use_patch_file:
         covered_lines_by_filename = {}
         if use_coverage:
-            coverage_data = measure_coverage(argument, paths_to_mutate, tests_dirs)
+            coverage_data = measure_coverage(argument, paths_to_mutate, tests_dirs, runner)
             commit = commit_hash()
             if os.path.exists(".git") and commit and commit != current_commit():
                 coverage_to_mutate, changed_mutants = modified_coverage(coverage_data)
