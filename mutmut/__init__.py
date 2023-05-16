@@ -56,7 +56,7 @@ class RelativeMutationID(object):
         return 'MutationID(line="{}", index={}, line_number={}, filename={})'.format(self.line, self.index, self.line_number, self.filename)
 
     def __eq__(self, other):
-        return (self.line, self.index, self.line_number) == (other.line, other.index, other.line_number)
+        return (self.line, self.index, self.line_number, self.filename) == (other.line, other.index, other.line_number, other.filename)
 
     def __hash__(self):
         return hash((self.line, self.index, self.line_number))
