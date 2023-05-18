@@ -122,7 +122,7 @@ def modified_coverage(new_covered_files):
 def measure_coverage(argument, paths_to_mutate, tests_dirs, test_command):
     """Find all test files located under the 'tests' directory and calculate coverage"""
     # files = program_files(paths_to_mutate, paths_to_exclude)
-    command = test_command.split(' ') + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q', '--no-summary', '--no-header']
+    command = test_command.split(' ') + ['--cov=' + ','.join(paths_to_mutate), '--cov-context=test', '-q']
     result = subprocess.check_output(command)  #TODO add paths to coverage
     cov_data = CoverageData()
     cov_data.read()

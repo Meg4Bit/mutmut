@@ -742,6 +742,7 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
                 number_mutants = len(config.changed_mutants)
                 number_mutants = number_mutants if number_mutants < len(sample_elements) else len(sample_elements)
             random_mutants = random.sample(sample_elements, number_mutants)
+            print("Number of created mutants: ", number_mutants)
         for filename, mutations in mutations_by_file.items():
             cached_mutation_statuses = get_cached_mutation_statuses(filename, mutations, config.hash_of_tests)
             with open(filename) as f:
