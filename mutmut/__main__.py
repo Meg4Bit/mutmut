@@ -351,6 +351,8 @@ Legend for output:
     if using_testmon:
         copy('.testmondata', '.testmondata-initial')
 
+    stored_mutants = len(tested_mutants())
+
     # if we're running in a mode with externally whitelisted lines
     covered_lines_by_filename = None
     coverage_data = None
@@ -363,7 +365,7 @@ Legend for output:
             commit = commit_hash()
             if os.path.exists(".git") and commit and commit != current_commit():
                 coverage_to_mutate, changed_mutants = modified_coverage(coverage_data)
-                delete_mutants(changed_mutants)
+                stored_mutants -= delete_mutants(changed_mutants)
                 update_mutants_test_hash(tested_mutants(), current_hash_of_tests)
         else:
             assert use_patch_file
@@ -381,6 +383,7 @@ Legend for output:
         number_mutants=number_mutants,
         coverage_to_mutate=coverage_to_mutate,
         changed_mutants=changed_mutants,
+        stored_mutants = stored_mutants,
         swallow_output=not swallow_output,
         test_command=runner,
         covered_lines_by_filename=covered_lines_by_filename,
@@ -431,7 +434,9 @@ def parse_run_argument(argument, config, dict_synonyms, mutations_by_file, paths
                 if filename.startswith('test_') or filename.endswith('__tests.py'):
                     continue
                 update_line_numbers(filename)
+                n_mut = tested_mutants()
                 add_mutations_by_file(mutations_by_file, filename, dict_synonyms, config)
+                n_mut = tested_mutants()
     else:
         try:
             int(argument)

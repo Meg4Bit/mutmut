@@ -533,6 +533,7 @@ def tested_mutants():
 def delete_mutants(mutants):
     for mutant in mutants:
         update_mutant_status(mutant.filename, mutant, UNTESTED, '')
+    return len(mutants)
 
 
 @init_db
@@ -551,12 +552,12 @@ def commit_hash():
 @init_db
 @db_session
 def update_mutants_test_hash(mutants, test_hash):
-    for mutant in mutants:
-        sourcefile = SourceFile.get(filename=mutant.filename)
+    for mutant_id in mutants:
+        sourcefile = SourceFile.get(filename=mutant_id.filename)
         assert sourcefile
-        line = Line.get(sourcefile=sourcefile, line=mutant.line, line_number=mutant.line_number)
+        line = Line.get(sourcefile=sourcefile, line=mutant_id.line, line_number=mutant_id.line_number)
         assert line
-        mutant = Mutant.get(line=line, index=mutant.index)
+        mutant = Mutant.get(line=line, index=mutant_id.index)
         if mutant is None:
-            mutant = get_or_create(Mutant, line=line, index=mutant.index, defaults=dict(status=UNTESTED))
+            mutant = get_or_create(Mutant, line=line, index=mutant_id.index, defaults=dict(status=UNTESTED))
         mutant.tested_against_hash = test_hash

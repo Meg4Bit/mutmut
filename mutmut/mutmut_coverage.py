@@ -138,4 +138,11 @@ def changed_sample(coverage_to_mutate, mutations_by_file):
                 if mutant.line_number + 1 in coverage_to_mutate[file]:
                     changed_coverage_mutants.append(mutant)
     return changed_coverage_mutants
+
+
+def empty_coverage_sample(coverage_data, mutations_by_file):
+    empty_coverage = {}
+    for file in coverage_data:
+        empty_coverage[file] = {line: coverage_data[file][line] for line in coverage_data[file] if '' in coverage_data[file][line]}
+    return changed_sample(empty_coverage, mutations_by_file)
     

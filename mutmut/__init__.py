@@ -29,7 +29,7 @@ from time import time
 
 from parso import parse
 from parso.python.tree import Name, Number, Keyword, FStringStart, FStringEnd
-from mutmut.mutmut_coverage import changed_sample
+from mutmut.mutmut_coverage import changed_sample, empty_coverage_sample
 
 __version__ = '2.4.3'
 
@@ -726,9 +726,10 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
     try:
         index = 0
         if config.number_mutants >= 0:
+            from mutmut.cache import tested_mutants, delete_mutants
+            t_mutants = tested_mutants()
+            additional_mutants = []
             if config.changed_mutants is None:
-                from mutmut.cache import tested_mutants, delete_mutants
-                t_mutants = tested_mutants()
                 number_mutants = config.number_mutants if config.number_mutants < config.total else config.total
                 if number_mutants - len(tested_mutants()) < 0:
                     delete_mutants(t_mutants)
@@ -741,8 +742,12 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
                 sample_elements = changed_sample(config.coverage_to_mutate, mutations_by_file)
                 number_mutants = len(config.changed_mutants)
                 number_mutants = number_mutants if number_mutants < len(sample_elements) else len(sample_elements)
-            random_mutants = random.sample(sample_elements, number_mutants)
-            print("Number of created mutants: ", number_mutants)
+                if config.stored_mutants - len(t_mutants) > 0:
+                    additional_mutants = random.sample(empty_coverage_sample(config.coverage_data, mutations_by_file),
+                                                        config.stored_mutants - len(t_mutants))
+                progress.total = number_mutants + len(t_mutants) + len(additional_mutants)
+            random_mutants = random.sample(sample_elements, number_mutants) + additional_mutants
+            print("Number of created mutants: ", len(random_mutants))
         for filename, mutations in mutations_by_file.items():
             cached_mutation_statuses = get_cached_mutation_statuses(filename, mutations, config.hash_of_tests)
             with open(filename) as f:
@@ -855,7 +860,7 @@ def run_mutation(context: Context, callback) -> str:
 
 
 class Config(object):
-    def __init__(self, number_mutants, coverage_to_mutate, changed_mutants, 
+    def __init__(self, number_mutants, coverage_to_mutate, changed_mutants, stored_mutants,
                  swallow_output, test_command, covered_lines_by_filename,
                  baseline_time_elapsed, test_time_multiplier, test_time_base,
                  dict_synonyms, total, using_testmon,
@@ -864,6 +869,7 @@ class Config(object):
         self.number_mutants = number_mutants
         self.coverage_to_mutate = coverage_to_mutate
         self.changed_mutants = changed_mutants
+        self.stored_mutants = stored_mutants
         self.swallow_output = swallow_output
         self.test_command = self._default_test_command = test_command
         self.covered_lines_by_filename = covered_lines_by_filename
