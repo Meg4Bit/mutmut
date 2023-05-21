@@ -11,7 +11,7 @@ def pre_mutation(context):
     contexts_for_file = context.config.coverage_data.get(fname, {})
     contexts_for_line = contexts_for_file.get(context.current_line_index, [])
     test_names = [
-        '\'' + re.sub(r'([\[](.*)[\]])?\|.*', lambda x: "[" + x.group(2) + "]" if x.group(1) else x.group(1), ctx) + '\''
+        '\'' + re.sub(r'([\[](.*)[\]])?\|.*', lambda x: "[" + x.group(2) + "]" if x.group(1) else x.group(1), ctx).replace("\'", "\'\"\'\"\'") + '\''
         for ctx in contexts_for_line
         if ctx  # skip empty strings
     ]
