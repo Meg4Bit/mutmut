@@ -140,9 +140,9 @@ def changed_sample(coverage_to_mutate, mutations_by_file):
     return changed_coverage_mutants
 
 
-def empty_coverage_sample(coverage_data, mutations_by_file):
+def empty_coverage_sample(coverage_data, mutations_by_file, t_mutants):
     empty_coverage = {}
     for file in coverage_data:
         empty_coverage[file] = {line: coverage_data[file][line] for line in coverage_data[file] if '' in coverage_data[file][line]}
-    return changed_sample(empty_coverage, mutations_by_file)
+    return [elem for elem in changed_sample(empty_coverage, mutations_by_file) if elem not in t_mutants]
     

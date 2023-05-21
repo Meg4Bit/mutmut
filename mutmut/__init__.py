@@ -743,7 +743,7 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
                 number_mutants = len(config.changed_mutants)
                 number_mutants = number_mutants if number_mutants < len(sample_elements) else len(sample_elements)
                 if config.stored_mutants - len(t_mutants) > 0:
-                    additional_mutants = random.sample(empty_coverage_sample(config.coverage_data, mutations_by_file),
+                    additional_mutants = random.sample(empty_coverage_sample(config.coverage_data, mutations_by_file, t_mutants),
                                                         config.stored_mutants - len(t_mutants))
                 progress.total = number_mutants + len(t_mutants) + len(additional_mutants)
             random_mutants = random.sample(sample_elements, number_mutants) + additional_mutants
