@@ -17,6 +17,6 @@ def pre_mutation(context):
     ]
     if not test_names:
         return
-    context.config.test_command = "python -m pytest -x --assert=plain"
+    context.config.test_command = "python -m pytest -n auto -x --assert=plain"
     context.config.test_command += f' {" ".join(test_names)}'
     
