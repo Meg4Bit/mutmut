@@ -32,24 +32,32 @@ def find_difference(changes_dict):
     from mutmut.cache import commit_hash
     repo = git.Repo(".")
     old_commit = repo.commit(commit_hash())
-    for git_diff in old_commit.diff("HEAD").iter_change_type("M"):
-        if git_diff.a_path.endswith('.py'):
-            a_str_list = git_diff.a_blob.data_stream.read().decode('utf-8').split('\n')
-            b_str_list = git_diff.b_blob.data_stream.read().decode('utf-8').split('\n')
-            str_diff = difflib.unified_diff(a_str_list, b_str_list, n=0, lineterm=' ')
-            diff_lines = list(str_diff)
-            a_line, b_line = 0, 0
-            path = git_diff.a_blob.abspath
-            changes_dict[path] = {"-": [], "+": []}
-            for line in diff_lines[2:]:
-                if line[0] == '@':
-                    a_line, b_line = parse_diff_header(line)
-                if line[0] == '-':
-                    changes_dict[path]['-'].append(a_line)
-                    a_line += 1
-                if line[0] == '+':
-                    changes_dict[path]['+'].append(b_line)
-                    b_line += 1
+    for change_type in ['A', 'D', 'M', 'R']:
+        for git_diff in old_commit.diff("HEAD").iter_change_type(change_type):
+            if git_diff.a_path.endswith('.py'):
+                a_str_list = []
+                b_str_list = []
+                if git_diff.a_blob:
+                    a_str_list = git_diff.a_blob.data_stream.read().decode('utf-8').split('\n')
+                if git_diff.b_blob:
+                    b_str_list = git_diff.b_blob.data_stream.read().decode('utf-8').split('\n')
+                str_diff = difflib.unified_diff(a_str_list, b_str_list, n=0, lineterm=' ')
+                diff_lines = list(str_diff)
+                a_line, b_line = 0, 0
+                if git_diff.a_blob:
+                    path = git_diff.a_blob.abspath
+                else:
+                    path = git_diff.b_blob.abspath
+                changes_dict[path] = {"-": [], "+": []}
+                for line in diff_lines[2:]:
+                    if line[0] == '@':
+                        a_line, b_line = parse_diff_header(line)
+                    if line[0] == '-':
+                        changes_dict[path]['-'].append(a_line)
+                        a_line += 1
+                    if line[0] == '+':
+                        changes_dict[path]['+'].append(b_line)
+                        b_line += 1
 
 
 def covered_files_lists(prev_covered_files, new_covered_files):
@@ -80,11 +88,19 @@ def find_changed_tests(dict_prev_covered_files, dict_new_covered_files, changes_
             tests_with_changes(changes_dict[prev_covered_file]['-'], dict_prev_covered_files[prev_covered_file], changed_tests)
         if new_covered_file and new_covered_file in changes_dict.keys():    # Tests which coverage affected by changes
             tests_with_changes(changes_dict[new_covered_file]['+'], dict_new_covered_files[new_covered_file], changed_tests)
-        if prev_covered_file == new_covered_file and prev_covered_file in changes_dict.keys():    # Tests with changed coverage
-            prev_lines = [line for line in dict_prev_covered_files[prev_covered_file].keys() if line not in changes_dict[prev_covered_file]['-']]
+        if prev_covered_file == new_covered_file:    # Tests with changed coverage
+            if prev_covered_file in changes_dict:
+                prev_lines = [line for line in dict_prev_covered_files[prev_covered_file].keys() if line not in changes_dict[prev_covered_file]['-']]
+                new_lines = [line for line in dict_new_covered_files[new_covered_file].keys() if line not in changes_dict[new_covered_file]['+']]
+            else:
+                prev_lines = [line for line in dict_prev_covered_files[prev_covered_file].keys()]
+                new_lines = [line for line in dict_new_covered_files[new_covered_file].keys()]
             prev_lines.sort()
-            new_lines = [line for line in dict_new_covered_files[new_covered_file].keys() if line not in changes_dict[new_covered_file]['+']]
             new_lines.sort()
+            if not new_lines:
+                for prev in prev_lines:
+                    changed_tests += [test for test in dict_prev_covered_files[prev_covered_file][prev] \
+                                        if test not in changed_tests]
             for prev, new in zip(prev_lines, new_lines):
                 changed_coverage = list(set(dict_prev_covered_files[prev_covered_file][prev]).symmetric_difference(set(dict_new_covered_files[new_covered_file][new])))
                 changed_tests += [test for test in changed_coverage if test not in changed_tests]
