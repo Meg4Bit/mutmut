@@ -43,9 +43,9 @@ from mutmut.cache import print_result_cache, print_result_ids_cache, \
     hash_of_tests, \
     filename_and_mutation_id_from_pk, cached_test_time, set_cached_test_time, \
     update_line_numbers, print_result_cache_junitxml, get_unified_diff, delete_mutants, \
-    set_commit_hash, commit_hash, tested_mutants, update_mutants_test_hash
+    set_commit_hash, commit_hash, tested_mutants
 
-from mutmut.mutmut_coverage import modified_coverage, measure_coverage, current_commit
+from mutmut.mutmut_coverage import modified_coverage, measure_coverage, current_commit, update_mutants
 
 
 def do_apply(mutation_pk, dict_synonyms, backup):
@@ -366,7 +366,7 @@ Legend for output:
             if os.path.exists(".git") and commit and commit != current_commit():
                 coverage_to_mutate, changed_mutants = modified_coverage(coverage_data)
                 stored_mutants -= delete_mutants(changed_mutants)
-                update_mutants_test_hash(tested_mutants(), current_hash_of_tests)
+                update_mutants(tested_mutants(), current_hash_of_tests, commit)
         else:
             assert use_patch_file
             covered_lines_by_filename = read_patch_data(use_patch_file)

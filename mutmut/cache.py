@@ -561,3 +561,37 @@ def update_mutants_test_hash(mutants, test_hash):
         if mutant is None:
             mutant = get_or_create(Mutant, line=line, index=mutant_id.index, defaults=dict(status=UNTESTED))
         mutant.tested_against_hash = test_hash
+
+
+@init_db
+@db_session
+def create_mutants(mutants):
+    for mutation_id in mutants:
+        sourcefile = get_or_create(SourceFile, filename=mutation_id.filename)
+        line = Line.get(sourcefile=sourcefile, line=mutation_id.line, line_number=mutation_id.line_number)
+        if line is None:
+            raise ValueError("Obtained null line for mutation_id: {}".format(mutation_id))
+        get_or_create(Mutant, line=line, index=mutation_id.index, defaults=dict(status=UNTESTED))
+
+
+@init_db
+@db_session
+def renamed_line_number(line_num, a, b):
+    b_lines = []
+    sourcefile = get_or_create(SourceFile, filename=a)
+    cached_line_objects = list(sourcefile.lines.order_by(Line.line_number))
+    cached_lines = [x.line for x in cached_line_objects]
+    with open(b) as b:
+        b_lines = [x.strip('\n') for x in b.readlines()]
+    s = SequenceMatcher(None, cached_lines, b_lines)
+    blocks = s.get_matching_blocks()
+    prev_block = blocks[0]
+    for block in blocks:
+        if line_num < block.a:
+            if line_num - prev_block.a < prev_block.size and \
+                cached_lines[line_num] == b_lines[prev_block.b + line_num - prev_block.a]:
+                return prev_block.b + line_num - prev_block.a
+            else:
+                return None
+        prev_block = block
+    return None

@@ -1,6 +1,7 @@
 import git
 import difflib
 import subprocess
+import copy
 
 from pathlib import Path
 from contextlib import redirect_stdout
@@ -44,10 +45,10 @@ def find_difference(changes_dict):
                 str_diff = difflib.unified_diff(a_str_list, b_str_list, n=0, lineterm=' ')
                 diff_lines = list(str_diff)
                 a_line, b_line = 0, 0
-                if git_diff.a_blob:
-                    path = git_diff.a_blob.abspath
+                if change_type == 'R':
+                    path = git_diff.a_blob.abspath + ":" + git_diff.b_blob.abspath 
                 else:
-                    path = git_diff.b_blob.abspath
+                    path = git_diff.a_blob.abspath if git_diff.a_blob else git_diff.b_blob.abspath
                 changes_dict[path] = {"-": [], "+": []}
                 for line in diff_lines[2:]:
                     if line[0] == '@':
@@ -80,6 +81,24 @@ def tests_with_changes(changed_lines, covered_file, changed_tests):
             changed_tests += [test for test in covered_file[line] if test not in changed_tests]
 
 
+def equal_files_changes(prev_covered_file, new_covered_file, file, changes_dict, changed_tests):
+    if file in changes_dict:
+        prev_lines = [line for line in prev_covered_file if line not in changes_dict[file]['-']]
+        new_lines = [line for line in new_covered_file if line not in changes_dict[file]['+']]
+    else:
+        prev_lines = [line for line in prev_covered_file]
+        new_lines = [line for line in new_covered_file]
+    prev_lines.sort()
+    new_lines.sort()
+    if not new_lines:
+        for prev in prev_lines:
+            changed_tests += [test for test in prev_covered_file[prev] \
+                                if test not in changed_tests]
+    for prev, new in zip(prev_lines, new_lines):
+        changed_coverage = list(set(prev_covered_file[prev]).symmetric_difference(set(new_covered_file[new])))
+        changed_tests += [test for test in changed_coverage if test not in changed_tests]
+
+
 def find_changed_tests(dict_prev_covered_files, dict_new_covered_files, changes_dict):
     changed_tests = []
     list_prev_covered_files, list_new_covered_files = covered_files_lists(dict_prev_covered_files, dict_new_covered_files)
@@ -89,21 +108,18 @@ def find_changed_tests(dict_prev_covered_files, dict_new_covered_files, changes_
         if new_covered_file and new_covered_file in changes_dict.keys():    # Tests which coverage affected by changes
             tests_with_changes(changes_dict[new_covered_file]['+'], dict_new_covered_files[new_covered_file], changed_tests)
         if prev_covered_file == new_covered_file:    # Tests with changed coverage
-            if prev_covered_file in changes_dict:
-                prev_lines = [line for line in dict_prev_covered_files[prev_covered_file].keys() if line not in changes_dict[prev_covered_file]['-']]
-                new_lines = [line for line in dict_new_covered_files[new_covered_file].keys() if line not in changes_dict[new_covered_file]['+']]
-            else:
-                prev_lines = [line for line in dict_prev_covered_files[prev_covered_file].keys()]
-                new_lines = [line for line in dict_new_covered_files[new_covered_file].keys()]
-            prev_lines.sort()
-            new_lines.sort()
-            if not new_lines:
-                for prev in prev_lines:
-                    changed_tests += [test for test in dict_prev_covered_files[prev_covered_file][prev] \
-                                        if test not in changed_tests]
-            for prev, new in zip(prev_lines, new_lines):
-                changed_coverage = list(set(dict_prev_covered_files[prev_covered_file][prev]).symmetric_difference(set(dict_new_covered_files[new_covered_file][new])))
-                changed_tests += [test for test in changed_coverage if test not in changed_tests]
+            equal_files_changes(dict_prev_covered_files[prev_covered_file], dict_new_covered_files[new_covered_file], \
+                                prev_covered_file, changes_dict, changed_tests)
+    for file in changes_dict:
+        if ':' in file:
+            prev_covered_file, new_covered_file = file.split(':')
+            if prev_covered_file in dict_prev_covered_files:
+                tests_with_changes(changes_dict[file]['-'], dict_prev_covered_files[prev_covered_file], changed_tests)
+            if new_covered_file in dict_new_covered_files:
+                tests_with_changes(changes_dict[file]['+'], dict_new_covered_files[new_covered_file], changed_tests)
+            if prev_covered_file in dict_prev_covered_files and new_covered_file in dict_new_covered_files:
+                equal_files_changes(dict_prev_covered_files[prev_covered_file], dict_new_covered_files[new_covered_file], \
+                                    file, changes_dict, changed_tests)
     return [item for item in changed_tests if item != '']
 
 
@@ -161,4 +177,30 @@ def empty_coverage_sample(coverage_data, mutations_by_file, t_mutants):
     for file in coverage_data:
         empty_coverage[file] = {line: coverage_data[file][line] for line in coverage_data[file] if '' in coverage_data[file][line]}
     return [elem for elem in changed_sample(empty_coverage, mutations_by_file) if elem not in t_mutants]
-    
+
+
+def update_mutants(mutants, hash_of_tests, commit):
+    from mutmut.cache import update_mutants_test_hash, create_mutants, renamed_line_number, \
+                                update_mutant_status, cached_mutation_status, update_line_numbers
+    update_mutants_test_hash(mutants, hash_of_tests)
+    old_mutants = []
+    new_mutants = []
+    repo = git.Repo(".")
+    old_commit = repo.commit(commit)
+    for git_diff in old_commit.diff("HEAD").iter_change_type('R'):
+        for mutant in mutants:
+            if mutant.filename == git_diff.a_blob.abspath:
+                new_mutant = copy.deepcopy(mutant)
+                new_mutant.filename = git_diff.b_blob.abspath
+                update_line_numbers(new_mutant.filename)
+                new_mutant.line_number = renamed_line_number(mutant.line_number, git_diff.a_blob.abspath, git_diff.b_blob.abspath)
+                if new_mutant.line_number is not None:
+                    new_mutants.append(new_mutant)
+                    old_mutants.append(mutant)
+                else:
+                    update_mutant_status(mutant.filename, mutant, 'untested', '')
+    create_mutants(new_mutants)
+    for new_mutant, old_mutant in zip(new_mutants, old_mutants):
+        status = cached_mutation_status(old_mutant.filename, old_mutant, hash_of_tests)
+        update_mutant_status(new_mutant.filename, new_mutant, status, hash_of_tests)
+        update_mutant_status(old_mutant.filename, old_mutant, 'untested', '')
