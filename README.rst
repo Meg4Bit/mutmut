@@ -391,7 +391,7 @@ Additional arguments can be added from default Mutmut program.
 
 Another option is to run ``mutmut-check.sh`` script.
 
-It requires env variable $MUTMUT=PATH_TO_MUTMUT to be set and should be run from project dir.
+It requires env variable $MUTMUT=PATH_TO_MUTMUT to be set and should be run from the project dir.
 If necessary the project under test can be added to PYTHONPATH.
 
 ``mutmut-check.sh`` uses the folowing arguments which correspond to Mutmut arguments:
@@ -402,3 +402,9 @@ If necessary the project under test can be added to PYTHONPATH.
 4. **paths-to-exclude**
 
 The script tests revisions of the project from last 100 commits. Master branch is selected by default.
+
+Example of running the script:
+
+.. code-block:: console
+
+    ./mutmut-check.sh $PATH_TO_MUTATE pytest 10
