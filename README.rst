@@ -370,3 +370,32 @@ The possible values for these policies are:
 
 If a failed mutant is included in the report, then the unified diff of the
 mutant will also be included for debugging purposes.
+
+
+How to run a new feature
+---------------
+
+Modified Mutmut can be run from the console for each new iteration, 
+but first you have to export its location to PYTHONPATH env variable.
+The same is applied for a new module to be tested.
+The command to run tests:
+
+.. code-block:: console
+
+    python -m mutmut run --paths-to-mutate=$PATH_TO_MUTATE --use-coverage -n $NUMBER_MUTANTS
+
+Additional arguments can be added from default Mutmut program.
+
+Another option is to run `mutmut-check.sh` script:
+
+It requires env variable $MUTMUT=PATH_TO_MUTMUT to be set.
+The project under test also should be added to PYTHONPATH
+
+`mutmut-check.sh` uses the folowing arguments:
+
+1. paths-to-mutate
+2. runner
+3. number-mutants
+4. paths-to-exclude
+
+The script uses revisions of the project from last 100 commits. It uses master branch as base.
