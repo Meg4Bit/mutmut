@@ -378,6 +378,7 @@ How to run a new feature
 Modified Mutmut can be run from the console for each new iteration, 
 but first you have to export its location to PYTHONPATH env variable.
 The same is applied for a new module to be tested.
+Each new iteration requires .coverage_old, that stores information about previous coverage.
 The command to run tests:
 
 .. code-block:: console
