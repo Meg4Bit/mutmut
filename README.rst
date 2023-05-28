@@ -372,13 +372,15 @@ If a failed mutant is included in the report, then the unified diff of the
 mutant will also be included for debugging purposes.
 
 
-How to run a new feature
+How to run with a new coverage feature
 ---------------
 
-Modified Mutmut can be run from the console for each new iteration, 
-but first you have to export its location to PYTHONPATH env variable.
-The same is applied for a new module to be tested.
-Each new iteration requires .coverage_old, that stores information about previous coverage.
+Modified **Mutmut** can be run on every new iteration from the console.
+The new module is enabled by the flag ``--use-coverage`` and requires
+*.coverage_old* and *.mutmut-cache* to be present in the directory.
+*.coverage_old* stores information about previously covered lines.
+Before running mutation testing on the project, location of **Mutmut** 
+should be added to PYTHONPATH environment variable, which could also be applied for the project.
 The command to run tests:
 
 .. code-block:: console
@@ -387,16 +389,16 @@ The command to run tests:
 
 Additional arguments can be added from default Mutmut program.
 
-Another option is to run `mutmut-check.sh` script:
+Another option is to run ``mutmut-check.sh`` script.
 
-It requires env variable $MUTMUT=PATH_TO_MUTMUT to be set.
-The project under test also should be added to PYTHONPATH
+It requires env variable $MUTMUT=PATH_TO_MUTMUT to be set and should be run from project dir.
+If necessary the project under test can be added to PYTHONPATH.
 
-`mutmut-check.sh` uses the folowing arguments:
+``mutmut-check.sh`` uses the folowing arguments which correspond to Mutmut arguments:
 
-1. paths-to-mutate
-2. runner
-3. number-mutants
-4. paths-to-exclude
+1. **paths-to-mutate**
+2. **runner**
+3. **number-mutants**
+4. **paths-to-exclude**
 
-The script uses revisions of the project from last 100 commits. It uses master branch as base.
+The script tests revisions of the project from last 100 commits. Master branch is selected by default.
