@@ -2,7 +2,7 @@
 
 export PYTHONPATH=$PYTHONPATH:$MUTMUT
 
-thresholds=(80 60 40 20 0)
+thresholds=(80 60 )
 
 git stash && git checkout main
 git checkout HEAD~100
