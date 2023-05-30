@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export PYTHONPATH=$PYTHONPATH:$MUTMUT
-
 thresholds=(80 60 )
 
 git stash && git checkout main
