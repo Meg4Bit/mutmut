@@ -13,8 +13,10 @@ mv .coverage .coverage_old
 for t in ${thresholds[@]}; do
   git stash && git checkout main
   git checkout HEAD~$t
+  if $t <= 20
   pip-autoremove Flask -y
   pip install . && pip install -r requirements/dev.txt
+  fi 
   echo "Modified mutmut"
   time python -m mutmut run --paths-to-mutate=$1 --paths-to-exclude=$4 --use-coverage -n $3 --runner "$2"
   mv .coverage .coverage_old
