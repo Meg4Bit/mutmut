@@ -16,6 +16,7 @@ for t in ${thresholds[@]}; do
     pip-autoremove Flask -y
     pip install . && pip install -r requirements/dev.txt && pip install werkzeug==2.2.2
   elif [ $t == 0 ]
+  then
     pip install --upgrade werkzeug
   fi 
   echo "Modified mutmut"
