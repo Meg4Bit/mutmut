@@ -14,7 +14,9 @@ for t in ${thresholds[@]}; do
   if [ $t == 20 ]
   then
     pip-autoremove Flask -y
-    pip install . && pip install -r requirements/dev.txt
+    pip install . && pip install -r requirements/dev.txt && pip install werkzeug==2.2.2
+  elif [ $t == 0 ]
+    pip install --upgrade werkzeug
   fi 
   echo "Modified mutmut"
   time python -m mutmut run --paths-to-mutate=$1 --paths-to-exclude=$4 --use-coverage -n $3 --runner "$2"
