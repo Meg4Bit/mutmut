@@ -1,6 +1,6 @@
 #!/bin/bash
 
-thresholds=(80 60 40 20 0)
+thresholds=( 20 0)
 
 git stash && git checkout main
 git checkout HEAD~100
@@ -11,7 +11,7 @@ mv .coverage .coverage_old
 for t in ${thresholds[@]}; do
   git stash && git checkout main
   git checkout HEAD~$t
-  if [ $t <= 20 ]
+  if [ $t == 20 ]
   then
     pip-autoremove Flask -y
     pip install . && pip install -r requirements/dev.txt
