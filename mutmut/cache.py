@@ -595,3 +595,10 @@ def renamed_line_number(line_num, a, b):
                 return None
         prev_block = block
     return None
+
+
+@init_db
+@db_session
+def number_killed_mutants():
+    return len(select(x for x in Mutant if x.status == OK_KILLED))
+

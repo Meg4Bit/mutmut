@@ -175,7 +175,7 @@ def changed_sample(coverage_to_mutate, mutations_by_file):
 def empty_coverage_sample(coverage_data, mutations_by_file, t_mutants):
     empty_coverage = {}
     for file in coverage_data:
-        empty_coverage[file] = {line: coverage_data[file][line] for line in coverage_data[file] if '' in coverage_data[file][line]}
+        empty_coverage[file] = {line: coverage_data[file][line] for line in coverage_data[file] if coverage_data[file][line] == ['']}
     return [elem for elem in changed_sample(empty_coverage, mutations_by_file) if elem not in t_mutants]
 
 
@@ -204,3 +204,15 @@ def update_mutants(mutants, hash_of_tests, commit):
         status = cached_mutation_status(old_mutant.filename, old_mutant, hash_of_tests)
         update_mutant_status(new_mutant.filename, new_mutant, status, hash_of_tests)
         update_mutant_status(old_mutant.filename, old_mutant, 'untested', '')
+
+
+def empty_coverage_changed_mutants(mutations_by_file, coverage_data):
+    changes_dict = {}
+    changed_mutants = []
+    find_difference(changes_dict)
+    empty_coverage_mutations = empty_coverage_sample(coverage_data, mutations_by_file, [])
+    for mutation_id in empty_coverage_mutations:
+        if mutation_id.filename in changes_dict and \
+            mutation_id.line_number + 1 in changes_dict[mutation_id.filename]['+']:
+            changed_mutants.append(mutation_id)
+    return changed_mutants

@@ -43,9 +43,9 @@ from mutmut.cache import print_result_cache, print_result_ids_cache, \
     hash_of_tests, \
     filename_and_mutation_id_from_pk, cached_test_time, set_cached_test_time, \
     update_line_numbers, print_result_cache_junitxml, get_unified_diff, delete_mutants, \
-    set_commit_hash, commit_hash, tested_mutants
+    set_commit_hash, commit_hash, tested_mutants, number_killed_mutants, cached_mutation_status
 
-from mutmut.mutmut_coverage import modified_coverage, measure_coverage, current_commit, update_mutants
+from mutmut.mutmut_coverage import modified_coverage, measure_coverage, current_commit, update_mutants, empty_coverage_sample, changed_sample
 
 
 def do_apply(mutation_pk, dict_synonyms, backup):
@@ -414,7 +414,24 @@ Legend for output:
     progress = Progress(total=progress_total, output_legend=output_legend, no_progress=no_progress)
 
     try:
+        # if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
+        #     empty_mutants = empty_coverage_sample(coverage_data, mutations_by_file, [])
+        #     number_empty_mutants = len(empty_mutants)
+        #     killed_empty, total_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
+        #     killed_unchanged = number_killed_mutants() - killed_empty
+        #     sample_unchanged = len(tested_mutants()) - total_empty
         run_mutation_tests(config=config, progress=progress, mutations_by_file=mutations_by_file)
+        killed_mutants = progress.killed_mutants
+        # if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
+        #     total_changed = len(changed_sample(coverage_to_mutate, mutations_by_file))
+        #     total_unchanged = config.total - total_changed - number_empty_mutants
+        #     killed_empty, sample_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
+        #     killed_changed = killed_mutants - killed_unchanged - killed_empty
+        #     sample_changed = progress.total - sample_unchanged - sample_empty
+        #     killed_mutants = sample_killed_mutants(killed_changed, sample_changed, total_changed, config.total, progress.total) + \
+        #                         sample_killed_mutants(killed_unchanged, sample_unchanged, total_unchanged, config.total, progress.total) + \
+        #                         sample_killed_mutants(killed_empty, sample_empty, total_empty, config.total, progress.total)
+        print("\nMutation score = {}/{}".format(round(killed_mutants), progress.total))
         set_commit_hash(current_commit())
     except Exception as e:
         traceback.print_exc()
@@ -499,6 +516,21 @@ def time_test_suite(swallow_output, test_command, using_testmon, current_hash_of
     set_cached_test_time(baseline_time_elapsed, current_hash_of_tests)
 
     return baseline_time_elapsed
+
+
+def killed_empty_mutants(empty_mutants, hash_of_tests):
+    killed = 0
+    total = 0
+    for mutant in tested_mutants():
+        if mutant in empty_mutants:
+            total += 1
+            if cached_mutation_status(mutant.filename, mutant, hash_of_tests) == 'ok_killed':
+                killed += 1
+    return killed, total
+
+
+def sample_killed_mutants(killed, sample, total, config_total, progress_total):
+    return (killed / sample) * (total / config_total) * progress_total
 
 
 if __name__ == '__main__':
