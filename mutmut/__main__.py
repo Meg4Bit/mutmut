@@ -414,23 +414,23 @@ Legend for output:
     progress = Progress(total=progress_total, output_legend=output_legend, no_progress=no_progress)
 
     try:
-        # if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
-        #     empty_mutants = empty_coverage_sample(coverage_data, mutations_by_file, [])
-        #     number_empty_mutants = len(empty_mutants)
-        #     killed_empty, total_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
-        #     killed_unchanged = number_killed_mutants() - killed_empty
-        #     sample_unchanged = len(tested_mutants()) - total_empty
+        if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
+            empty_mutants = empty_coverage_sample(coverage_data, mutations_by_file, [])
+            total_empty = len(empty_mutants)
+            killed_empty, sample_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
+            killed_unchanged = number_killed_mutants() - killed_empty
+            sample_unchanged = len(tested_mutants()) - sample_empty
         run_mutation_tests(config=config, progress=progress, mutations_by_file=mutations_by_file)
         killed_mutants = progress.killed_mutants
-        # if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
-        #     total_changed = len(changed_sample(coverage_to_mutate, mutations_by_file))
-        #     total_unchanged = config.total - total_changed - number_empty_mutants
-        #     killed_empty, sample_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
-        #     killed_changed = killed_mutants - killed_unchanged - killed_empty
-        #     sample_changed = progress.total - sample_unchanged - sample_empty
-        #     killed_mutants = sample_killed_mutants(killed_changed, sample_changed, total_changed, config.total, progress.total) + \
-        #                         sample_killed_mutants(killed_unchanged, sample_unchanged, total_unchanged, config.total, progress.total) + \
-        #                         sample_killed_mutants(killed_empty, sample_empty, total_empty, config.total, progress.total)
+        if use_coverage and os.path.exists(".git") and commit and commit != current_commit():
+            total_changed = len(changed_sample(coverage_to_mutate, mutations_by_file))
+            total_unchanged = config.total - total_changed - total_empty
+            killed_empty, sample_empty = killed_empty_mutants(empty_mutants, current_hash_of_tests)
+            killed_changed = killed_mutants - killed_unchanged - killed_empty
+            sample_changed = progress.total - sample_unchanged - sample_empty
+            killed_mutants = sample_killed_mutants(killed_changed, sample_changed, total_changed, config.total, progress.total) + \
+                                sample_killed_mutants(killed_unchanged, sample_unchanged, total_unchanged, config.total, progress.total) + \
+                                sample_killed_mutants(killed_empty, sample_empty, total_empty, config.total, progress.total)
         print("\nMutation score = {}/{}".format(round(killed_mutants), progress.total))
         set_commit_hash(current_commit())
     except Exception as e:
