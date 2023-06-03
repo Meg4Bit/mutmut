@@ -720,6 +720,14 @@ def mutate_file(backup, context):
     return original, mutated
 
 
+def unchanged_mutants(t_mutants, empty_mutants):
+    mutants = []
+    for mutant in t_mutants:
+        if mutant not in empty_mutants:
+            mutants.append(mutant)
+    return mutants
+
+
 def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
     from mutmut.cache import get_cached_mutation_statuses
 
@@ -739,13 +747,29 @@ def queue_mutants(*, progress, config, mutants_queue, mutations_by_file):
                 sample_elements = [mutant for file in mutations_by_file \
                                    for mutant in mutations_by_file[file] if mutant not in t_mutants]
             else:
+                empty_mutants = empty_coverage_sample(config.coverage_data, mutations_by_file, [])
                 sample_elements = changed_sample(config.coverage_to_mutate, mutations_by_file)
-                number_mutants = len(config.changed_mutants)
+                sample_empty = round(len(empty_mutants) / config.total * config.number_mutants)
+                sample_changed = round(len(sample_elements) / config.total * config.number_mutants)
+                sample_unchanged = config.number_mutants - sample_changed - sample_empty
+                number_mutants = sample_changed
                 number_mutants = number_mutants if number_mutants < len(sample_elements) else len(sample_elements)
-                if config.stored_mutants - len(t_mutants) > 0:
-                    additional_mutants = random.sample(empty_coverage_sample(config.coverage_data, mutations_by_file, t_mutants),
-                                                        config.stored_mutants - len(t_mutants))
-                progress.total = number_mutants + len(t_mutants) + len(additional_mutants)
+                uch_mutants = unchanged_mutants(t_mutants, empty_mutants)
+                if sample_unchanged <= len(uch_mutants):
+                    delete_mutants(random.sample(uch_mutants, len(uch_mutants) - sample_unchanged))
+                else:
+                    uch_mutants_sample = []
+                    for file in mutations_by_file:
+                        for mutant in mutations_by_file[file]:
+                            if mutant not in sample_elements and mutant not in t_mutants and mutant not in empty_mutants:
+                                uch_mutants_sample.append(mutant)
+                    additional_mutants = random.sample(uch_mutants_sample, sample_unchanged - len(uch_mutants))
+                sample_empty_mutants = [mutant for mutant in t_mutants if mutant not in uch_mutants]
+                if sample_empty <= len(sample_empty_mutants):
+                    delete_mutants(random.sample(sample_empty_mutants, len(sample_empty_mutants) - sample_empty))
+                else:
+                    additional_mutants += random.sample(empty_coverage_sample(config.coverage_data, mutations_by_file, t_mutants),
+                                                        sample_empty - len(sample_empty_mutants))
             random_mutants = random.sample(sample_elements, number_mutants) + additional_mutants
             print("Number of created mutants: ", len(random_mutants))
         for filename, mutations in mutations_by_file.items():

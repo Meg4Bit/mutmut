@@ -407,10 +407,12 @@ Legend for output:
     parse_run_argument(argument, config, dict_synonyms, mutations_by_file, paths_to_exclude, paths_to_mutate, tests_dirs)
 
     config.total = sum(len(mutations) for mutations in mutations_by_file.values())
+    if config.number_mutants > config.total:
+        config.number_mutants = config.total
 
     print()
     print('2. Checking mutants')
-    progress_total = config.total if number_mutants < 0 else number_mutants
+    progress_total = config.total if config.number_mutants < 0 else config.number_mutants
     progress = Progress(total=progress_total, output_legend=output_legend, no_progress=no_progress)
 
     try:
