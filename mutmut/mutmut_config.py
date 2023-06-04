@@ -15,8 +15,9 @@ def pre_mutation(context):
         for ctx in contexts_for_line
         if ctx  # skip empty strings
     ]
+    if "-x --assert=plain" not in context.config.test_command:
+        context.config.test_command += " -x --assert=plain"
     if not test_names:
         return
-    context.config.test_command = "python -m pytest -x --assert=plain"
     context.config.test_command += f' {" ".join(test_names)}'
     
